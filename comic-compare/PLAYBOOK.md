@@ -55,9 +55,11 @@ PDF images often lack elements the PDF draws separately: lettering, page numbers
 5. **Pillow quantization tables come back in natural order** (verified empirically). `qtables=im.quantization` round-trips correctly for `reencode`.
 6. **The lattice test fails silently** when the CBZ was saved more coarsely than the PDF (Rain, Astro City), resampled (Mercy), or composited (Hobtown). "No fingerprint" doesn't prove "independent source".
 7. **Finite-sample bias** in coherence produced a false "PDF ≥ 1.06×" with few tiles. It's now corrected, and a 1.10 margin is required.
-8. **Gain differences** (saturation, paper multiply) create fake "detail" advantages at every band. Use `--normalize`, which compares fine detail relative to the coarsest band.
+8. **Different widths at the same height usually mean a one-axis stretch.** Use a full affine (`partial=False`), not a similarity transform, or registration fails. To find which file was resized, look for a column-sharpness rhythm at period `W_out/(W_out−W_in)` in the resized file. For tiny stretches, test for the JPEG lattice inside pixel-aligned column spans. Comparing nearest columns by phase is symmetric and can't tell the direction.
+9. **Same quantization tables plus a different colour mode** (RGB vs L): compare the raw Y planes, decoded with `im.draft('YCbCr', im.size)`. Bit-identical means a lossless transcode, so the quality is equal.
+10. **Gain differences** (saturation, paper multiply) create fake "detail" advantages at every band. Use `--normalize`, which compares fine detail relative to the coarsest band.
 
-## Results so far (15 books)
+## Results so far (16 books)
 
 | Book | Key finding | Verdict |
 |---|---|---|
@@ -75,6 +77,7 @@ PDF images often lack elements the PDF draws separately: lettering, page numbers
 | Rain (Joe Hill) | Whole-pixel crop, about 1.4 levels difference; undetermined. | Tie |
 | Die | The CBZ (a JXL repack of a JPEG) carries the PDF fingerprint; identical detail. | Tie |
 | Knights of Heliopolis | The PDF JPEG is very heavily compressed. The CBZ carries its fingerprint, but deblocked (block edges 1.26→1.09 brightness, 2.4–3.3→1.7–1.9 colour); 97–98% of coefficients stay in the PDF's quantization bins. | CBZ looks better (smoothing only) |
+| Aria: The Masterpiece Vol 5 & 7 | B&W pages: the CBZ greyscale JPEG is a **lossless greyscale transcode** of the PDF's RGB JPEG; its luma plane is bit-identical (decode with `draft('YCbCr')`). The colour page is identical in all planes. The cover (1533→1624) and opening (1621→1624) were **stretched horizontally in the CBZ**: the cover shows the resampling rhythm, and the opening keeps the PDF's JPEG fingerprint inside pixel-aligned spans. | Tie (interior); **PDF** (cover/opening) |
 | Hobtown Vol 1 & 11 | Layered PDF: artwork JPEG plus paper texture plus masks. The CBZ is the artwork × paper with **zero** PDF block edges, and provably ≥1.1–2.3× more colour detail (normalized). A control using the user's PDF render, which includes the paper, shows no gain and keeps the blocks, so the gain isn't from the paper or from rendering. Brightness detail is equal. | **CBZ better** (better-handled source or very good decoding; unresolved) |
 
 ## Handoff prompt for a new session
